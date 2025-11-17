@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure AI Login Page</title>
+<style>
+body{font-family:Arial,sans-serif;background-color:#7f7f7f;color:#ffffff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;user-select:none;-webkit-user-select:none;-ms-user-select:none}
+.login-container{background-color:#333;border:5px solid #1a1a1a;padding:40px;border-radius:10px;width:450px;height:560px;text-align:center}
+h2{margin-bottom:20px;color:#fff}
+.input-group{position:relative;width:90%;margin:8px 0}
+input[type="text"],input[type="email"],input[type="password"]{width:100%;padding:10px 30px 10px 5px;border:none;border-radius:5px;outline:none}
+.toggle-btn{position:absolute;right:1px;top:50%;transform:translateY(-50%);background:none;border:none;color:#222;cursor:pointer;font-weight:bold}
+button.login-btn{background-color:#000;color:#fff;padding:10px 20px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;transition:0.3s;width:100%;margin-top:10px}
+button.login-btn:hover{background-color:#0e0e0e}
+.captcha-container{display:flex;justify-content:space-between;align-items:center;margin:8px 0;width:90%;margin-left:auto;margin-right:auto}
+.captcha-text{background-color:#444;padding:10px;border-radius:5px;font-weight:bold;letter-spacing:2px}
+.footer-text{margin-top:15px;font-size:14px}
+a{color:#a8a8a8;text-decoration:none;font-size:12px}
+a:hover{text-decoration:underline}
+.checkbox-group{text-align:left;margin:10px 0;padding-left:20px}
+.refresh-btn{background:#000;color:#fff;border:none;border-radius:5px;cursor:pointer;padding:7px}
+.refresh-btn:hover{background-color:#0e0e0e}
+.password-strength{position:fixed;top:1rem;right:1rem;width:70px;height:70px;border-radius:50%;border:none;background:url('https://harish040805.github.io/budget/ailoginmeterbackground.gif') no-repeat center center;background-size:cover;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:4000;box-shadow:0 6px 14px rgba(0,0,0,0.2)}
+.password-strength svg{transform:rotate(-90deg)}
+.password-strength .bg{fill:none;stroke:#eee;stroke-width:5}
+.password-strength .progress{fill:none;stroke-width:7;stroke-linecap:round;stroke-dasharray:157;stroke-dashoffset:157;transition:stroke-dashoffset 0.4s ease,stroke 0.4s ease}
+.slider-container{width:90%;margin:15px auto;user-select:none}
+.slider-track{position:relative;background:#000;border-radius:40px;height:45px;display:flex;align-items:center;overflow:hidden}
+.slider-thumb{position:absolute;left:0;width:45px;height:45px;background:#fff;color:#000;font-weight:bold;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:grab;transition:background 0.3s}
+.slider-thumb:active{cursor:grabbing}
+.slider-text{color:#fff;text-align:center;width:100%;pointer-events:none;font-weight:bold;letter-spacing:1px}
+.captcha-container{margin-top:40px}
+.sequence-area{margin-top:12px;color:#fff;font-weight:600;height:28px}
+</style>
+</head>
+<body oncontextmenu="return false" oncopy="return false" oncut="return false" onpaste="return false">
+<button class="password-strength" id="password-strength" aria-label="Password strength meter" title="Password Strength">
+<svg width="50" height="50"><circle class="bg" cx="25" cy="25" r="25"></circle><circle class="progress" cx="25" cy="25" r="25"></circle></svg>
+</button>
+<div class="login-container">
+<h2>Secure AI Login</h2>
+<form onsubmit="return validateLogin()">
+<div class="input-group"><input type="text" id="username" placeholder="Username" required></div>
+<div class="input-group"><input type="email" id="email" placeholder="Email ID" required></div>
+<div class="input-group"><input type="password" id="password" placeholder="Password" required><button type="button" class="toggle-btn" onclick="togglePassword('password',this)">Show</button></div>
+<div class="input-group"><input type="password" id="confirm" placeholder="Confirm Password" required><button type="button" class="toggle-btn" onclick="togglePassword('confirm',this)">Show</button></div>
+<div class="input-group"><input type="text" id="captchao" placeholder="Captcha" required></div>
+<div class="captcha-container"><div class="captcha-text" id="captcha"></div><button type="button" onclick="generateCaptcha()" class="refresh-btn">New Captcha</button><a href="#" id="forgotPassword">Forgot password?</a></div>
+<div class="input-group" id="otpContainer" style="display:none;margin-top:10px;"><input type="text" id="otpInput" placeholder="Enter OTP"><span id="otpMessage" style="color:yellow;font-weight:bold;margin-left:5px;"></span></div>
+<br>
+<div class="checkbox-group">
+<input type="checkbox" id="checkbox1"><label for="checkbox1">I accept the Terms & Conditions</label> &nbsp; &nbsp; &nbsp;
+<input type="checkbox" id="checkbox2"><label for="checkbox2">I am not a robot</label>
+</div>
+<br>
+<div class="slider-container"><div class="slider-track"><div class="slider-thumb" id="sliderThumb">▶</div><span class="slider-text" id="sliderText">Login →</span></div></div>
+<div class="sequence-area" id="sequenceArea" aria-live="polite"></div>
+</form>
+<div class="footer-text">Don’t have an account? &nbsp; &nbsp; &nbsp; &nbsp;<a href="#">Sign up</a></div>
+</div>
+<script>
+const passwordInput=document.getElementById("password");
+const strengthCircle=document.querySelector(".password-strength .progress");
+document.addEventListener("input",e=>{
+  if(e.target.id==="password"){
+    const val=e.target.value;
+    let strength=0;
+    if(val.length>=8)strength++;
+    if(/[A-Z]/.test(val))strength++;
+    if(/[a-z]/.test(val))strength++;
+    if(/\d/.test(val))strength++;
+    if(/[!@#$%^&*()]/.test(val))strength++;
+    const dashOffset=157-(157*strength)/5;
+    strengthCircle.style.strokeDashoffset=dashOffset;
+    const colors=["#ff3b30","#ff9500","#ffcc00","#34c759","#00c851"];
+    strengthCircle.style.stroke=colors[strength-1]||"#ccc";
+  }
+});
+document.addEventListener('keydown',function(e){if((e.ctrlKey&&['c','u','s','x','a'].includes(e.key.toLowerCase()))||(e.key==='F12')){e.preventDefault();alert('Copying or inspecting is disabled - Harish');}});
+function togglePassword(fieldId,btn){const field=document.getElementById(fieldId);if(field.type==="password"){field.type="text";btn.innerText="Hide";}else{field.type="password";btn.innerText="Show";}}
+function generateCaptcha(){const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';let captcha='';for(let i=0;i<8;i++){captcha+=chars.charAt(Math.floor(Math.random()*chars.length));}document.getElementById('captcha').innerText=captcha;}
+window.onload=generateCaptcha;
+function validateLogin(){
+const username=document.getElementById("username").value.trim();
+const email=document.getElementById("email").value.trim();
+const password=document.getElementById("password").value;
+const confirm=document.getElementById("confirm").value;
+const captcha=document.getElementById("captcha").innerText.trim();
+const userCaptcha=document.getElementById("captchao").value.trim();
+const checkbox1=document.getElementById("checkbox1").checked;
+const checkbox2=document.getElementById("checkbox2").checked;
+const emailPattern=/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+let missingFields=[];
+document.querySelectorAll("input").forEach(input=>{input.addEventListener("input",()=>input.style.border="1px solid #ccc");});
+if(username===""){
+  missingFields.push("Username");document.getElementById("username").style.border="2px solid red";
+}
+if(email===""){
+  missingFields.push("Email ID");document.getElementById("email").style.border="2px solid red";
+}
+if(password===""){
+  missingFields.push("Password");document.getElementById("password").style.border="2px solid red";
+}
+if(confirm===""){
+  missingFields.push("Confirm Password");document.getElementById("confirm").style.border="2px solid red";
+}
+if(userCaptcha===""){
+  missingFields.push("Captcha");document.getElementById("captchao").style.border="2px solid red";
+}
+if(missingFields.length>0){if(missingFields.length===1){alert("Please fill the "+missingFields[0]+".");}else{alert("Please fill the "+missingFields.join(", ")+".");}return false;}
+if(!emailPattern.test(email)){alert("Please enter a valid Email ID (e.g., name@email.com).");return false;}
+if(username.toLowerCase()===email.toLowerCase()){alert("The user name and email should be different!");return false;}
+if(!checkbox1||!checkbox2){alert("Please click on both the check boxes below!");return false;}
+if(password!==confirm){alert("Passwords do not match!");return false;}
+if(/\s/.test(password)){alert("Password should not contain spaces!");return false;}
+if(password.length<8||password.length>32){alert("Password must be between 8 and 32 characters!");return false;}
+if(password.toLowerCase()===username.toLowerCase()){alert("Password must be different from the username!");return false;}
+const regex1=/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+if(!regex1.test(password)){alert("Password must include at least one uppercase letter, one lowercase letter, and one number!");return false;}
+const symbols=password.match(/[!@#$%^&*()]/g);
+if(!symbols||new Set(symbols).size<2){alert("Password must include at least 2 different symbols (! @ # $ % ^ & * ())");return false;}
+if(userCaptcha!==captcha){alert("Captcha is incorrect!");generateCaptcha();return false;}
+function playSequence(messages, targetEl, perMs, doneCb){
+  let idx = 0;
+  targetEl.textContent = messages[idx];
+  const t = setInterval(()=>{
+    idx++;
+    if(idx < messages.length){
+      targetEl.textContent = messages[idx];
+    } else {
+      clearInterval(t);
+      setTimeout(()=>{ doneCb(); }, perMs);
+    }
+  }, perMs);
+}
+const seqArea=document.getElementById("sequenceArea");
+const seqMsgs=[
+  "Checking the user name, password and other input fields are filled...",
+  "Submitting the form...",
+  "Validating server side...",
+  "Authenticating...",
+  "Authorizing...",
+  "Managing the session...",
+  "Login Successful!",
+  "Redirecting to the page"
+];
+playSequence(seqMsgs,seqArea,3000,()=>{window.location.href="https://www.google.com";});
+return true;}
+const thumb=document.getElementById("sliderThumb");
+const track=document.querySelector(".slider-track");
+const text=document.getElementById("sliderText");
+let isSliding=false;let startX=0;
+thumb.addEventListener("mousedown",startSlide);thumb.addEventListener("touchstart",startSlide);
+function startSlide(e){isSliding=true;startX=e.type==="touchstart"?e.touches[0].clientX:e.clientX;document.addEventListener("mousemove",moveSlide);document.addEventListener("touchmove",moveSlide);document.addEventListener("mouseup",endSlide);document.addEventListener("touchend",endSlide);}
+function moveSlide(e){if(!isSliding)return;const clientX=e.type==="touchmove"?e.touches[0].clientX:e.clientX;const deltaX=clientX-startX;const maxMove=track.offsetWidth-thumb.offsetWidth;if(deltaX>=0&&deltaX<=maxMove){thumb.style.left=`${deltaX}px`;}text.style.opacity=1-deltaX/maxMove;}
+function endSlide(){isSliding=false;const maxMove=track.offsetWidth-thumb.offsetWidth;const currentLeft=parseInt(thumb.style.left||"0");if(currentLeft>maxMove*0.9){thumb.style.left=`${maxMove}px`;thumb.style.background="#fff";text.innerText="Logging in...";setTimeout(()=>{if(!validateLogin()){resetSlider();}else{text.innerText="Success!";}},500);}else{resetSlider();}document.removeEventListener("mousemove",moveSlide);document.removeEventListener("touchmove",moveSlide);document.removeEventListener("mouseup",endSlide);document.removeEventListener("touchend",endSlide);}
+function resetSlider(){thumb.style.left="0px";thumb.style.background="#fff";text.innerText="Slide to Login →";text.style.opacity=1;}
+let generatedOTP=null;
+document.getElementById("forgotPassword").addEventListener("click",function(e){e.preventDefault();generatedOTP=Math.floor(100000+Math.random()*900000);const otpContainer=document.getElementById("otpContainer");const otpInput=document.getElementById("otpInput");const otpMessage=document.getElementById("otpMessage");otpContainer.style.display="block";otpInput.value="";otpMessage.innerText="OTP sent: "+generatedOTP;otpInput.oninput=()=>{if(otpInput.value===String(generatedOTP)){otpMessage.innerText="Password Reset";otpMessage.style.color="lightgreen";}else if(otpInput.value.length===String(generatedOTP).length){otpMessage.innerText="ERROR";otpMessage.style.color="red";}else{otpMessage.innerText="";}};});
+</script>
+</body>
+</html>
